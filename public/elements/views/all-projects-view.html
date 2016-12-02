@@ -1,0 +1,293 @@
+<!--link rel="import" href="../../bower_components/px-sample-cards/blank-card.html" -->
+<link rel="import" href="../../bower_components/px-context-browser/px-context-browser.html">
+<link rel="import" href="../../bower_components/px-deck-selector/px-deck-selector.html">
+<link rel="import" href="../../bower_components/paper-progress/paper-progress.html">
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../../bower_components/px-card/px-card.html"/>
+<link rel="import" href="../../bower_components/px-modal/px-modal.html"/>
+<link rel="import" href="../../bower_components/px-data-table/px-data-table.html"/>
+<link rel="import" href="../../elements/rsm-app/px-form.html">
+<link rel="import" href="../../bower_components/iron-icons/social-icons.html" />
+<link rel="import" href="../../elements/views/create-project-view.html">
+
+<dom-module id="all-projects-view">
+  	<style>
+		px-data-table::shadow .flex.px-data-table{
+			background: #f0ffff;
+			/*color: #a52a2a;*/
+		}
+  	</style>
+
+    <style is="custom-style">
+		px-modal{
+
+	        --px-modal-positive-button: {
+	            background-color: #086e87;
+	            color: white;
+	        };
+	    }
+
+    paper-button.custom:hover {
+        background-color: #0a89a9;
+    }
+    
+    paper-button.indigo {
+        background-color: #086e87;
+        width: 20%;
+        margin-bottom: 2%;
+        color: white;
+        --paper-button-raised-keyboard-focus: {
+            background-color: #0a89a9 !important;
+            color: white !important;
+        };
+    }
+  	</style>
+  <template id="user">
+
+  	<iron-ajax id="AjaxPost" method="POST" content-type="application/json" handle-as="json" on-response="_handleAjaxPostResponse" on-error="_handleAjaxPostError">
+    </iron-ajax>
+    <iron-ajax
+		id="fetchProjects"
+		method="GET"
+		content-type="application/json"
+		handle-as="json"
+		last-response="{{_result}}"
+		on-response="_handleFetchProjectsResponse"
+		on-error="_handleFetchProjectsError">
+	</iron-ajax>
+	<iron-ajax
+		id="deleteProject"
+		method="DELETE"
+		content-type="application/json"
+		handle-as="json"
+		last-response="{{_result}}"
+		on-response="_handleDeleteProjectSuccess"
+		on-error="_handleDeleteProjectError">
+	</iron-ajax>
+	<template is="dom-if" if="{{loading}}">
+		<paper-progress value="10" indeterminate="true" style="width:100%;"></paper-progress>
+	</template>
+
+    <px-modal class="u-1/3" id="create_project_modal_form" modalId="create_project_modal_form" btn-modal-positive="Save" btn-modal-negative="Cancel" modal-heading="Add New Project" btn-modal-negative-clicked-event-name="btnModalClicked" btn-modal-positive-clicked-event-name="btnModalPositiveClicked">
+		<create-project-view></create-project-view>
+    </px-modal>
+	
+	<px-card header-text='Project Details' id="general">
+      <paper-button class="custom indigo" id="add_resource_button" raised on-tap="onTap"><iron-icon icon="social:person-add"></iron-icon>&nbsp;&nbsp;Add Project</paper-button>
+
+		<px-data-table show-column-chooser="true" id="projecttable" table-data='[[_initialProjectList]]' striped="true" enable-column-resize="true" filterable="true" striped="true">
+            <px-data-table-column ellipsis-clip-position="center" type="html" label="Delete" name="deleteAction"></px-data-table-column>
+            <px-data-table-column label="Project Id" name="project_id" sortable="true" filterable="true"></px-data-table-column>
+            <px-data-table-column label="Assignment" name="projectAssignment" sortable="true" filterable="true""></px-data-table-column>
+            <px-data-table-column label="NTI" name="nti_Allocation" sortable="true" filterable="true""></px-data-table-column>
+            <px-data-table-column label="NPI" name="npi_Allocation" sortable="true" filterable="true""></px-data-table-column>
+            <px-data-table-column label="RTS" name="rts_Allocation" sortable="true" filterable="true""></px-data-table-column>
+            <px-data-table-column label="REQ" name="req_Allocation" sortable="true" filterable="true""></px-data-table-column>
+            <px-data-table-column label="Type" name="project_Type" sortable="true" filterable="true""></px-data-table-column>
+			
+		</px-data-table>
+	</px-card>
+	
+	<px-modal id="modalCreateProjectSuccess" modalId="modalCreateProjectSuccess" btn-modal-positive="Close" modal-heading="">
+        <p>
+            <b id="msgCreateProjectSuccess">Project created successfully.</b>
+        </p>
+        <!-- <p>Lorem ipsum dolor sit amet, </p> -->
+    </px-modal>
+    <px-modal id="modalCreateProjectError" modalId="modalCreateProjectError" btn-modal-positive="Close" modal-heading="Error">
+        <p>
+            <b id="msgCreateProjectError">Failed to add project.</b>
+        </p>
+        <!-- <p>Lorem ipsum dolor sit amet, </p> -->
+    </px-modal>
+	<px-modal id="modalDeleteProjectWarning" modalId="modalDeleteProjectWarning" btn-modal-negative="No" btn-modal-positive="Yes" modal-heading="">
+        <p>
+            <span id="msgDeleteWarning">Are you sure, you want to delete <span id="deleteCount">this Project</span> ?</span>
+        </p>
+    </px-modal>
+    <px-modal id="modalProjectDeleteSuccess" modalId="modalProjectDeleteSuccess" btn-modal-positive="Close" modal-heading="" >
+        <p>
+            <span id="msgProjectDeleteSuccess">Project added successfully.</span>
+        </p>
+        <!-- <p>Lorem ipsum dolor sit amet, </p> -->
+    </px-modal>
+    <px-modal id="modalProjectDeleteError" modalId="modalProjectDeleteError" btn-modal-positive="Close" modal-heading="Error">
+        <p>
+            <span id="msgProjectDeleteError">Failed to add project.</span>
+        </p>
+        <!-- <p>Lorem ipsum dolor sit amet, </p> -->
+    </px-modal>
+  </template>
+  <script>
+	var dataTable = null;
+	var tableElement = null;
+    Polymer({
+      is: 'all-projects-view',
+      properties: {
+      	_initialProjectList: {
+		  type: Object,
+		  computed: '_computeResult(_result)'
+		},loading: {
+			type: Boolean,
+			notify: true,
+			value: false
+		},
+		showTable: {
+			type: Boolean,
+			notify: true,
+			value: false
+		},
+		deleteProjectId: {
+			type: Object,
+			valye: 0
+		}
+	  },
+	  onTap: function() {
+            document.getElementById('errorCreateProjectMsg').style.display = 'none';
+            document.getElementById('create_project_modal_form').modalButtonClicked();
+        },
+      ready: function() {
+		this.getProjects();
+
+		this.$$('#modalDeleteProjectWarning').addEventListener('btnModalPositiveClicked', function(e) {
+        	// debugger;
+            document.querySelector('all-projects-view').deleteProjectById(document.querySelector('all-projects-view').deleteProjectId);
+        });
+
+        this.$$('#modalProjectDeleteSuccess').addEventListener('btnModalPositiveClicked', function(e) {
+            document.querySelector('#projecttable').tableData = []
+            document.querySelector('all-projects-view').getProjects();
+        });
+
+        this.$$('#create_project_modal_form').modalActionButtonClicked = function(event){
+            // alert();
+            console.log(event.target.id);
+            if(event.target.id === 'btnModalPositive'){
+
+                if(document.querySelector("create-project-view form").validate()){
+                    document.querySelector("all-projects-view").submitProjectInfo();
+                }
+
+            }else if(event.target.id === 'btnModalNegative'){
+                // debugger;
+                document.querySelector("create-project-view form").reset();
+                document.getElementById('create_project_modal_form').modalButtonClicked();
+            }
+        };
+      },
+	  getProjects: function(){
+		this.loading = true;
+		this.$.fetchProjects.url = "https://jpa-rsm.run.aws-usw02-pr.ice.predix.io/projectdetail/";
+		this.$.fetchProjects.generateRequest();
+	  },
+	  submitProjectInfo: function() {
+
+	  		// debugger;
+	  		// console.log();
+            var jsonData = document.querySelector('#projectForm').serialize();
+
+            jsonData.npi_Allocation = parseInt(jsonData.npi_Allocation);
+            jsonData.nti_Allocation = parseInt(jsonData.nti_Allocation);
+            jsonData.req_Allocation = parseInt(jsonData.req_Allocation);
+            jsonData.rts_Allocation = parseInt(jsonData.rts_Allocation);
+            console.log(jsonData);
+
+
+            this.loading = true;
+            this.$.AjaxPost.body = jsonData;
+            this.$.AjaxPost.url = "https://rsm.run.aws-usw02-pr.ice.predix.io/projectdetail/";
+            this.$.AjaxPost.generateRequest();
+        },
+	  _handleFetchProjectsResponse: function(request) {
+		console.log(request.detail.response);
+		this.showTable = true;
+		this.loading = false;
+		// document.getElementById('msg').innerHTML = "Success";
+		// document.getElementById('modal').modalButtonClicked();
+	  },
+	  _handleFetchProjectsError : function(err){
+	  	this.showTable = true;
+		this.loading = false;
+		// document.getElementById('msg').innerHTML = "Error";
+		// document.getElementById('modal').modalButtonClicked();
+		console.log("Error",err.detail);
+	  },
+	  _computeResult: function(_result) {
+			if(_result){
+				// this.showTable = true;
+				
+                for (var i = 0; i < _result.length; i++) {
+                    _result[i].deleteAction = '<paper-button class="deleteRowBtn" onClick="deleteProjectRowClicked('+_result[i].project_id+')"><iron-icon icon="icons:delete"></iron-icon></paper-button>';
+
+				}
+				return _result;
+			}
+		},        
+        deleteProjectById : function(project_id){
+        	this.loading = true;
+            this.$.deleteProject.url = "https://rsm.run.aws-usw02-pr.ice.predix.io/projectdetail/"+project_id;
+
+            this.$.deleteProject.generateRequest();
+        },
+        _handleAjaxPostResponse: function(request) {
+            this.loading = false;
+            console.log(request.detail.response);
+            document.querySelector('#msgCreateProjectSuccess').innerHTML = "Project added successfully.";
+            document.querySelector('create-project-view form').reset();
+
+            document.querySelector('#create_project_modal_form').modalButtonClicked();
+            document.querySelector('#modalCreateProjectSuccess').modalButtonClicked();
+
+            if(document.querySelector('all-projects-view')){
+        		document.querySelector('all-projects-view #projecttable').tableData = [];
+        		document.querySelector('all-projects-view').getProjects();
+            }
+
+        },
+        _handleAjaxPostError: function(err) {
+            this.loading = false;
+            document.getElementById('errorCreateProjectMsg').style.display = 'block';
+            document.getElementById('msgCreateProjectError').innerHTML = "Error while creating project.";
+            document.getElementById('errorCreateProjectMsg').scrollIntoView()
+            // document.getElementById('modalCreateProjectError').modalButtonClicked();
+            console.log("Error", err.detail);
+        },
+        _handleDeleteProjectSuccess: function(request) {
+        	this.loading = false;
+            console.log(request.detail.response);
+            document.getElementById('msgProjectDeleteSuccess').innerHTML = "Project deleted successfully.";
+            document.getElementById('modalProjectDeleteSuccess').modalButtonClicked();
+        },
+        _handleDeleteProjectError: function(request) {
+        	this.loading = false;
+            console.log(request.detail.response);
+            document.getElementById('msgProjectDeleteError').innerHTML = "Error while deleting project.";
+            document.getElementById('modalProjectDeleteError').modalButtonClicked();
+        }
+    });
+  </script>
+</dom-module>
+<script type="text/javascript">
+	function deleteProjectRowClicked(project_id){
+        // alert(e);
+        document.querySelector('all-projects-view').deleteProjectId = project_id;
+        document.getElementById('modalDeleteProjectWarning').modalButtonClicked();
+    }
+
+    window.addEventListener('WebComponentsReady', function(e) {
+
+    	
+
+    	// debugger;
+        /*document.getElementById('modalDeleteProjectWarning').addEventListener('btnModalPositiveClicked', function(e) {
+        	// debugger;
+            document.querySelector('all-projects-view').deleteProjectById(document.querySelector('all-projects-view').deleteProjectId);
+        });
+
+        document.getElementById('modalProjectDeleteSuccess').addEventListener('btnModalPositiveClicked', function(e) {
+            document.querySelector('#projecttable').tableData = []
+            document.querySelector('all-projects-view').getProjects();
+        });*/
+    });
+</script>

@@ -1,0 +1,198 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/px-context-browser/px-context-browser.html">
+<link rel="import" href="../../bower_components/px-deck-selector/px-deck-selector.html">
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../../bower_components/px-widget-cards/px-fourup.html">
+
+
+<link rel="import" href="../../bower_components/px-card/px-card.html" />
+<link rel="import" href="../../bower_components/px-vis/px-polygit-imports-vis.html">
+<link rel="import" href="../../bower_components/px-vis-pie-chart/px-vis-pie-chart.html">
+<link rel="import" href="../../bower_components/px-simple-horizontal-bar-chart/px-simple-horizontal-bar-chart.html">
+<link rel="import" href="../../bower_components/px-simple-bar-chart/px-simple-bar-chart.html">
+<link rel="import" href="../../bower_components/px-vis-timeseries/px-vis-timeseries.html">
+
+<!-- local px-deck -->
+<link rel="import" href="../../elements/px-deck/px-deck-index.html">
+
+<dom-module id="my-dashboard">
+  <template>
+
+    <script type="text/javascript" src="../../bower_components/es6-promise/es6-promise.min.js"></script>
+
+    <!-- contextIronAjax used to load data from local Predix Asset API -->
+    <iron-ajax
+      id="contextIronAjax"
+      url="/api/predix-asset/root/root"
+      last-response="{{_browserContext}}">
+    </iron-ajax>
+
+    <!-- decksIronAjax used to load data from local View Service API -->
+    <iron-ajax
+      id="decksIronAjax"
+      url="[[_decksUrl]]"
+      last-response="{{_decksResponse}}">
+      <!-- auto -->
+    </iron-ajax>
+
+    <!-- px-context-browser element -->
+    <!-- <px-context-browser
+      id="contextBrowser"
+      label-field="name"
+      id-field="id"
+      browser-context="[[_initialBrowserContext]]"
+      show-chevron="true">
+      <px-deck-selector
+        decks="[[_decks]]"
+        selected-deck="{{_selectedDeck}}">
+      </px-deck-selector>
+    </px-context-browser>
+    
+    <px-deck-index
+      view-service-base-url="[[viewServiceBaseUrl]]"
+      deck-id="[[_selectedDeckId]]">
+    </px-deck-index> -->
+
+
+    <px-fourup id="widget-3" widget-header="Charts" widget-icon="fa-camera-retro">
+      <div class='widget-1'>
+        <span><center>Location wise distribution</center></span><br>
+        <div style='width:450px;'>
+        <px-vis-pie-chart chart-data='[{"percentage":"26","x":15,"y":"Mumbai"},{"percentage":"2","x":1,"y":"Pune"},{"percentage":"2","x":1,"y":"Bangalore"},{"percentage":"14","x":8,"y":"Delhi"},{"percentage":"21","x":12,"y":"Chennai"},{"percentage":"12","x":7,"y":"Noida"},{"percentage":"16","x":9,"y":"Kolkata"},{"percentage":"7","x":4,"y":"Hyderabad"}]' use-percentage="true" width="467.046875" height="200" register-config='{"width":150,"type":"vertical"}' margin='{"top":"10","bottom":"10","left":"10","right":"70"}' series-config='{"mySerie":{"xAxisUnit":"pints","y":"y","x":"x"}}'></px-vis-pie-chart></div></div>
+      <div class='widget-2'>
+        <span><center>Band</center></span><br>
+        <px-simple-horizontal-bar-chart chart-data='[88,7,54,33,12,75,99]' width="auto" height="auto" legend-labels='["Alpha","Beta","Charlie","Delta","Echo","Fanta","Gamma","Hotel","India","Jakarta","King","Left"]' colors='["#5da5da","#faa43a","#60bd68","#f17cb0","#b2912f","#b276b2","#decf3f","#f15854","#4d4d4d"]' bar-labels="values"></px-simple-horizontal-bar-chart>
+      </div>
+      <div class='widget-3'>
+        <span><center>P &amp; L wise</center></span><br>
+
+      <px-vis-timeseries  width="300" height="200" prevent-resize="true" selection-type="xy" register-location="top" chart-data='[{"x":1397177400000,"y0":"0.0","y1":"2.0"},{"x":1397228040000,"y0":"0.897","y1":"2.5"},{"x":1397248260000,"y0":"1.0","y1":"3.5"},{"x":1397291280000,"y0":"2.0","y1":"1.5"},{"x":1397318100000,"y0":"1.5","y1":"0.5"},{"x":1397342100000,"y0":"3.0","y1":"2.0"},{"x":1397390820000,"y0":"0.897","y1":"1.5"}]' include-all-series="true"></px-vis-timeseries>
+
+      </div>
+      <div class='widget-4'>
+        <span><center>Project Type</center></span><br>
+        <div style='width:450px;'>
+          <px-vis-pie-chart chart-data='[{"percentage":12,"x":20,"y":"RPS"},{"percentage":24,"x":30,"y":"NPI"},{"percentage":26,"x":50,"y":"NTI"}]' use-percentage="true" inner-radius="0.6" donut="true" width="467.046875" height="200" register-config='{"width":150,"type":"vertical"}' margin='{"top":"10","bottom":"10","left":"10","right":"70"}' series-config='{"mySerie":{"xAxisUnit":"pints","y":"y","x":"x"}}'></px-vis-pie-chart>
+        </div>
+      </div>
+    </px-fourup>
+
+  </template>
+  <script>
+    Polymer({
+
+      is: 'my-dashboard',
+
+      properties: {
+        _decks: {
+          type: Array,
+          computed: '_computeDecks(_decksResponse)'
+        },
+        _initialBrowserContext: {
+          type: Object,
+          computed: '_computeInitialBrowserContext(_browserContext)'
+        },
+        _nodeUri: {
+          type: String
+        },
+        _decksUrl: {
+          type: String,
+          computed: '_computeDecksUrl(_selectedContextTag, viewServiceBaseUrl)'
+        },
+        _selectedContextTag: {
+          type: String,
+          value: ''
+        },
+        viewServiceBaseUrl: {
+          type: String,
+          value: '/api/view-service/'
+        },
+        _selectedDeckId: {
+          type: String,
+          computed: '_computeSelectedDeckId(_selectedDeck)'
+        }
+      },
+
+      _computeDecksUrl: function() {
+        if(this._selectedContextTag) {
+          return this.viewServiceBaseUrl + "decks?tag=" + this._selectedContextTag;
+        } else {
+          return this.viewServiceBaseUrl + "decks";
+        }
+      },
+
+      _computeSelectedDeckId: function() {
+        if(this._selectedDeck) {
+          return this._selectedDeck.id;
+        }
+      },
+
+      ready1: function ready() {
+        var _this = this;
+        this.$.contextBrowser.handlers = {
+          // getChildren fires when a node is 'selected'
+          getChildren: function(parent, newIndex) {
+            return _this._getChildren(parent);
+          },
+          // itemOpenHandler fires when a node's 'open' link is clicked
+          itemOpenHandler: function(item) {
+            return _this._itemOpenHandler(item);
+          }
+        };
+        // initialize context data and decks
+        this.$.contextIronAjax.generateRequest();
+        this.$.decksIronAjax.generateRequest();
+      },
+
+      _computeDecks: function() {
+        var decks = [];
+        if (this._decksResponse && this._decksResponse.length > 0) {
+          this._decksResponse.forEach(function(deck) {
+            decks.push({ name: deck.title, id: deck.id });
+          });
+        };
+        return decks;
+      },
+
+      _computeInitialBrowserContext: function(_browserContext) {
+        if(typeof this._initialBrowserContext !== 'object') {
+          return _browserContext;
+        } else {
+          return this._initialBrowserContext;
+        }
+      },
+
+      // "getChildren" handler for px-context-browser
+      // this function is passed into
+      _getChildren: function(node) {
+        var that = this;
+        return new Promise(function(resolve, reject) {
+          var req = new XMLHttpRequest();
+          req.open('GET', '/api/predix-asset' + node.uri);
+
+          req.onload = function() {
+            if (req.status === 200) {
+              that._nodeUri = node.uri;
+              // that._computeDecks();
+              resolve(JSON.parse(req.response));
+            } else {
+              reject(req.statusText);
+            }
+          };
+
+          req.onError = function() {
+            reject("Network Error");
+          };
+
+          req.send()
+        });
+      },
+
+      _itemOpenHandler: function(item) {
+        this._selectedContextTag = item.id;
+        this.$.decksIronAjax.generateRequest();
+      },
+
+    });
+  </script>
+</dom-module>
